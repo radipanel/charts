@@ -2,21 +2,81 @@
 	// Include the required glob.php file
 	require_once( "../_inc/glob.php" );
 
-	// Now we tell PHP the location of our JSON feed
+	// This is the location of the feed
 	$feed = "http://pipes.yahoo.com/pipes/pipe.run?_id=201ce12e3d9dd0ced4304b8275c5458b&_render=json";
+	
+	// And the location of the JSON file
+	$json_cache = ( "../_inc/chart_cache.json" );
+	
+	// First, we check for the presence of a cache file
+	$cache_file = file_exists( $json_cache );
+	
+	if ( $cache_file ) {
+	
+		// Now we see how old the cache file is with a little bit of PHP magic
+		$yesterday = strtotime( "yesterday" );
 
-	// And set all the parameters for the cURL session in $session
-	$session = curl_init($feed);
-	curl_setopt($session, CURLOPT_HEADER, false);
-	curl_setopt($session, CURLOPT_RETURNTRANSFER, true);
+		// Find out how old the file is using filemtime()
+		$cache_age = filemtime( $json_cache );
 
-	// Execute cURL and store the results in $result
-	$result = curl_exec($session);
-	// And close cURL
-	curl_close($session);
+		// And run the check
+		if( $cache_age < $yesterday ) {
+		
+			// It is older than yesterday, so we remove the old cache file
+			@unlink( $json_cache );
+			
+			// And fetch the new one
+			$session = curl_init($feed);
+			curl_setopt($session, CURLOPT_HEADER, false);
+			curl_setopt($session, CURLOPT_RETURNTRANSFER, true);
 
+			// Execute cURL and store the results in $result
+			$result = curl_exec($session);
+			// And close cURL
+			curl_close($session);
+
+			// Then we write the JSON data to a file, located in _inc/chart_cache.json
+			$cacheFile = $json_cache;
+			$handle = fopen( $cacheFile, 'w' );
+		
+			// And write the data we downloaded to it
+			fwrite( $handle, $result );
+			fclose( $handle );
+			
+		}
+		else {
+		
+			// The file is fine and exists, so we use that instead ;)
+			$result = file_get_contents( $json_cache );
+		
+		}
+	
+	}
+	else {
+	
+		// And set all the parameters for the cURL session in $session
+		$session = curl_init($feed);
+		curl_setopt($session, CURLOPT_HEADER, false);
+		curl_setopt($session, CURLOPT_RETURNTRANSFER, true);
+
+		// Execute cURL and store the results in $result
+		$result = curl_exec($session);
+		// And close cURL
+		curl_close($session);
+
+		// Then we write the JSON data to a file, located in _inc/chart_cache.json
+		$cacheFile = $json_cache;
+		$handle = fopen( $cacheFile, 'w' );
+		
+		// And write the data we downloaded to it
+		fwrite( $handle, $result );
+		fclose( $handle );
+		
+	}
+		
 	// Then, using json_decode we serialise the JSON feed into $array
 	$array = json_decode($result);
+		
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
 	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
